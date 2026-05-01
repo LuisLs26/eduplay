@@ -1,4 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Inicializar Firebase
+    const firebaseConfig = {
+        apiKey: "AIzaSyCqbEQWT_m9U7fH2ynRV9ZzFSz_W-gMOJg",
+        authDomain: "eduplay-a7679.firebaseapp.com",
+        projectId: "eduplay-a7679",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
     const navLinks = document.querySelectorAll('.nav-links a');
     const views = document.querySelectorAll('.view');
     const createForm = document.getElementById('create-form');
@@ -16,20 +25,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const gameMainTitle = document.getElementById('game-main-title');
     const gameMainSubtitle = document.getElementById('game-main-subtitle');
-    const btnShareActivity = document.getElementById('btn-share-activity');
+    const shareButtonsContainer = document.getElementById('share-buttons-container');
+    const btnCopyLink = document.getElementById('btn-copy-link');
+    const btnWhatsappShare = document.getElementById('btn-whatsapp-share');
     const toastNotification = document.getElementById('toast-notification');
 
     const questionCounter = document.getElementById('question-counter');
     const scoreDisplay = document.getElementById('score-display');
-    
+
     // Game Content Area
     const gameContentArea = document.getElementById('game-content-area');
     const questionMedia = document.getElementById('question-media');
     const gameImage = document.getElementById('game-image');
-    
+
     const questionText = document.getElementById('question-text');
     const optionsGrid = document.getElementById('options-grid');
-    
+
     // Match Grid specific
     const matchGrid = document.getElementById('match-grid');
     const matchColLeft = document.getElementById('match-col-left');
@@ -48,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentQuestionIndex = 0;
     let score = 0;
     let isAnswered = false;
-    
+
     // Image Search Modal
     const searchModal = document.getElementById('image-search-modal');
     const btnCloseModal = document.getElementById('btn-close-modal');
@@ -57,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchLoader = document.getElementById('image-search-loader');
     const searchResultsGrid = document.getElementById('image-search-results');
     let currentImageTarget = null;
-    
+
     // Match Game state
     let matchSelectedLeft = null;
     let matchSelectedRight = null;
@@ -100,12 +111,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetId === 'list-view') {
             renderActivities();
         } else if (targetId === 'preview-view' && !currentActivity) {
-            previewPlaceholder.style.display = 'flex';
-            gameContainer.style.display = 'none';
-            resultsContainer.style.display = 'none';
-            gameMainTitle.textContent = "Vista previa";
-            gameMainSubtitle.textContent = "Prueba tu actividad antes de compartirla.";
-            btnShareActivity.style.display = 'none';
+            if (previewPlaceholder) previewPlaceholder.style.display = 'flex';
+            if (gameContainer) gameContainer.style.display = 'none';
+            if (resultsContainer) resultsContainer.style.display = 'none';
+            if (gameMainTitle) gameMainTitle.textContent = "Vista previa";
+            if (gameMainSubtitle) gameMainSubtitle.textContent = "Prueba tu actividad antes de compartirla.";
+            if (shareButtonsContainer) shareButtonsContainer.style.display = 'none';
         }
     }
 
@@ -119,10 +130,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Renderizar lista
     function renderActivities() {
         const currentActivities = getActivities();
-        activitiesContainer.innerHTML = '';
-        
+        if (activitiesContainer) activitiesContainer.innerHTML = '';
+
         if (currentActivities.length === 0) {
-            activitiesContainer.innerHTML = '<p style="color: var(--text-secondary); grid-column: 1/-1;">No tienes actividades creadas aún.</p>';
+            if (activitiesContainer) activitiesContainer.innerHTML = '<p style="color: var(--text-secondary); grid-column: 1/-1;">No tienes actividades creadas aún.</p>';
             return;
         }
 
@@ -130,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'activity-card';
             const numPreguntas = act.questions ? act.questions.length : 0;
-            
+
             card.innerHTML = `
                 <div class="card-header">
                     <h3>${act.title}</h3>
@@ -141,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="type-badge" style="background: rgba(34, 197, 94, 0.15); color: #22c55e;">${numPreguntas} Qs/Pares</span>
                 </div>
             `;
-            
+
             card.addEventListener('click', (e) => {
                 if (e.target.closest('.btn-delete')) return;
                 if (act.questions && act.questions.length > 0) {
@@ -161,34 +172,36 @@ document.addEventListener('DOMContentLoaded', () => {
                     saveActivities(freshActivities);
                     renderActivities();
                     if (currentActivity && currentActivity.id === act.id) {
-                        currentActivity = null; 
+                        currentActivity = null;
                     }
                 }
             });
 
-            activitiesContainer.appendChild(card);
+            if (activitiesContainer) activitiesContainer.appendChild(card);
         });
     }
 
     // 5. Formulario Dinámico según Tipo
     let questionCount = 0;
 
-    typeInput.addEventListener('change', () => {
-        questionsContainer.innerHTML = '';
-        questionCount = 0;
-        addQuestionBlock();
-    });
-    
+    if (typeInput) {
+        typeInput.addEventListener('change', () => {
+            if (questionsContainer) questionsContainer.innerHTML = '';
+            questionCount = 0;
+            addQuestionBlock();
+        });
+    }
+
     function addQuestionBlock() {
         const currentType = typeInput.value;
         if (!currentType) return;
 
         questionCount++;
         const qId = Date.now() + '-' + Math.floor(Math.random() * 1000);
-        
+
         const block = document.createElement('div');
         block.className = 'question-block';
-        
+
         let headerTitle = currentType === 'Emparejar' ? 'Par' : 'Pregunta';
 
         let innerHTML = `
@@ -260,15 +273,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
         }
-        
+
         block.innerHTML = innerHTML;
-        
+
         const imgInput = block.querySelector('.q-image-url');
         const imgContainer = block.querySelector('.image-preview-container');
         const imgPreview = block.querySelector('.image-preview-container img');
         const btnSearch = block.querySelector('.btn-search-img');
         const btnRemoveImg = block.querySelector('.btn-remove-img');
-        
+
         btnSearch.addEventListener('click', () => {
             currentImageTarget = { input: imgInput, preview: imgPreview, container: imgContainer };
             searchModal.style.display = 'flex';
@@ -282,112 +295,121 @@ document.addEventListener('DOMContentLoaded', () => {
             imgPreview.src = '';
             imgContainer.style.display = 'none';
         });
-        
+
         block.querySelector('.btn-remove-question').addEventListener('click', () => {
             block.remove();
         });
-        
-        questionsContainer.appendChild(block);
+
+        if (questionsContainer) questionsContainer.appendChild(block);
     }
-    
-    btnAddQuestion.addEventListener('click', () => {
-        if (!typeInput.value) {
-            alert("Primero selecciona el Tipo de actividad.");
-            return;
-        }
-        addQuestionBlock();
-    });
+
+    if (btnAddQuestion) {
+        btnAddQuestion.addEventListener('click', () => {
+            if (typeInput && !typeInput.value) {
+                alert("Primero selecciona el Tipo de actividad.");
+                return;
+            }
+            addQuestionBlock();
+        });
+    }
 
     // 6. Guardar actividad
-    createForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        const currentType = typeInput.value;
-        const title = document.getElementById('activity-title').value.trim();
-        
-        if (!title) {
-            alert('El título no puede estar vacío.');
-            return;
-        }
+    if (createForm) {
+        createForm.addEventListener('submit', (e) => {
+            e.preventDefault();
 
-        const questionBlocks = questionsContainer.querySelectorAll('.question-block');
-        if (questionBlocks.length === 0) {
-            alert('Debes agregar al menos un elemento.');
-            return;
-        }
+            const currentType = typeInput ? typeInput.value : '';
+            const titleEl = document.getElementById('activity-title');
+            const title = titleEl ? titleEl.value.trim() : '';
 
-        const questionsArray = [];
-        let hasErrors = false;
-
-        questionBlocks.forEach(block => {
-            const imgUrl = block.querySelector('.q-image-url').value.trim();
-
-            if (currentType === 'Opción múltiple' || currentType === 'Verdadero/Falso') {
-                const text = block.querySelector('.q-text').value.trim();
-                const opts = block.querySelectorAll('.opt-text');
-                const radios = block.querySelectorAll('input[type="radio"]');
-                
-                let correctIndex = 0;
-                let optionsArray = [];
-                
-                opts.forEach((opt, index) => {
-                    optionsArray.push(opt.value.trim());
-                    if (radios[index].checked) correctIndex = index;
-                });
-
-                if (!text || optionsArray.some(o => o === '')) hasErrors = true;
-
-                questionsArray.push({
-                    text: text,
-                    imageUrl: imgUrl,
-                    options: optionsArray,
-                    correctIndex: correctIndex
-                });
-            } else if (currentType === 'Emparejar') {
-                const left = block.querySelector('.q-left').value.trim();
-                const right = block.querySelector('.q-right').value.trim();
-                
-                if (!left || !right) hasErrors = true;
-
-                questionsArray.push({
-                    leftText: left,
-                    imageUrl: imgUrl,
-                    rightText: right
-                });
+            if (!title) {
+                alert('El título no puede estar vacío.');
+                return;
             }
+
+            const questionBlocks = questionsContainer ? questionsContainer.querySelectorAll('.question-block') : [];
+            if (questionBlocks.length === 0) {
+                alert('Debes agregar al menos un elemento.');
+                return;
+            }
+
+            const questionsArray = [];
+            let hasErrors = false;
+
+            questionBlocks.forEach(block => {
+                const imgUrl = block.querySelector('.q-image-url').value.trim();
+
+                if (currentType === 'Opción múltiple' || currentType === 'Verdadero/Falso') {
+                    const text = block.querySelector('.q-text').value.trim();
+                    const opts = block.querySelectorAll('.opt-text');
+                    const radios = block.querySelectorAll('input[type="radio"]');
+
+                    let correctIndex = 0;
+                    let optionsArray = [];
+
+                    opts.forEach((opt, index) => {
+                        optionsArray.push(opt.value.trim());
+                        if (radios[index].checked) correctIndex = index;
+                    });
+
+                    if (!text || optionsArray.some(o => o === '')) hasErrors = true;
+
+                    questionsArray.push({
+                        text: text,
+                        imageUrl: imgUrl,
+                        options: optionsArray,
+                        correctIndex: correctIndex
+                    });
+                } else if (currentType === 'Emparejar') {
+                    const left = block.querySelector('.q-left').value.trim();
+                    const right = block.querySelector('.q-right').value.trim();
+
+                    if (!left || !right) hasErrors = true;
+
+                    questionsArray.push({
+                        leftText: left,
+                        imageUrl: imgUrl,
+                        rightText: right
+                    });
+                }
+            });
+
+            if (hasErrors) {
+                alert('Por favor completa todos los campos de texto requeridos.');
+                return;
+            }
+
+            const newActivity = {
+                id: Date.now(),
+                title: title,
+                type: currentType,
+                questions: questionsArray
+            };
+
+            const latestActivities = getActivities();
+            latestActivities.unshift(newActivity);
+            saveActivities(latestActivities);
+
+            createForm.reset();
+            if (questionsContainer) questionsContainer.innerHTML = '';
+
+            navigateTo('list-view');
         });
-
-        if (hasErrors) {
-            alert('Por favor completa todos los campos de texto requeridos.');
-            return;
-        }
-        
-        const newActivity = {
-            id: Date.now(),
-            title: title,
-            type: currentType,
-            questions: questionsArray
-        };
-        
-        const latestActivities = getActivities();
-        latestActivities.unshift(newActivity);
-        saveActivities(latestActivities);
-        
-        createForm.reset();
-        questionsContainer.innerHTML = '';
-
-        navigateTo('list-view');
-    });
+    }
 
     // 7. Motor de Juego Dinámico y Transiciones
     function fadeTransition(callback) {
-        gameContentArea.classList.remove('fade-in');
-        gameContentArea.classList.add('fade-out');
-        
+        if (gameContentArea) {
+            gameContentArea.classList.remove('fade-in');
+            gameContentArea.classList.add('fade-out');
+        }
+
         setTimeout(() => {
             callback();
-            gameContentArea.classList.remove('fade-out');
-            gameContentArea.classList.add('fade-in');
+            if (gameContentArea) {
+                gameContentArea.classList.remove('fade-out');
+                gameContentArea.classList.add('fade-in');
+            }
         }, 300);
     }
 
@@ -395,113 +417,117 @@ document.addEventListener('DOMContentLoaded', () => {
         currentActivity = activity;
         currentQuestionIndex = 0;
         score = 0;
-        
-        gameMainTitle.textContent = `Jugando: ${activity.title}`;
-        gameMainSubtitle.textContent = `Tipo: ${activity.type}`;
-        btnShareActivity.style.display = 'flex';
-        
-        previewPlaceholder.style.display = 'none';
-        resultsContainer.style.display = 'none';
-        gameContainer.style.display = 'block';
-        
-        gameContentArea.classList.remove('fade-out');
-        gameContentArea.classList.add('fade-in');
-        
+
+        if (gameMainTitle) gameMainTitle.textContent = `Jugando: ${activity.title}`;
+        if (gameMainSubtitle) gameMainSubtitle.textContent = `Tipo: ${activity.type}`;
+        if (shareButtonsContainer) shareButtonsContainer.style.display = 'flex';
+
+        if (previewPlaceholder) previewPlaceholder.style.display = 'none';
+        if (resultsContainer) resultsContainer.style.display = 'none';
+        if (gameContainer) gameContainer.style.display = 'block';
+
+        if (gameContentArea) {
+            gameContentArea.classList.remove('fade-out');
+            gameContentArea.classList.add('fade-in');
+        }
+
         renderQuestion();
     }
 
     function renderQuestion() {
         isAnswered = false;
-        gameFeedback.style.display = 'none';
-        btnNextQuestion.style.display = 'none';
-        
+        if (gameFeedback) gameFeedback.style.display = 'none';
+        if (btnNextQuestion) btnNextQuestion.style.display = 'none';
+
         const type = currentActivity.type;
-        
+
         if (type === 'Opción múltiple' || type === 'Verdadero/Falso') {
             const currentQ = currentActivity.questions[currentQuestionIndex];
-            questionCounter.textContent = `Pregunta ${currentQuestionIndex + 1} de ${currentActivity.questions.length}`;
-            scoreDisplay.textContent = `Puntos: ${score}`;
-            
-            questionText.style.display = 'block';
-            optionsGrid.style.display = 'grid';
-            matchGrid.style.display = 'none';
-            optionsGrid.innerHTML = '';
-            
+            if (questionCounter) questionCounter.textContent = `Pregunta ${currentQuestionIndex + 1} de ${currentActivity.questions.length}`;
+            if (scoreDisplay) scoreDisplay.textContent = `Puntos: ${score}`;
+
+            if (questionText) questionText.style.display = 'block';
+            if (optionsGrid) {
+                optionsGrid.style.display = 'grid';
+                optionsGrid.innerHTML = '';
+            }
+            if (matchGrid) matchGrid.style.display = 'none';
+
             if (currentQ.imageUrl) {
-                gameImage.src = currentQ.imageUrl;
-                questionMedia.style.display = 'block';
+                if (gameImage) gameImage.src = currentQ.imageUrl;
+                if (questionMedia) questionMedia.style.display = 'block';
             } else {
-                gameImage.src = '';
-                questionMedia.style.display = 'none';
+                if (gameImage) gameImage.src = '';
+                if (questionMedia) questionMedia.style.display = 'none';
             }
 
-            questionText.textContent = currentQ.text;
-            
+            if (questionText) questionText.textContent = currentQ.text;
+
             currentQ.options.forEach((optText, index) => {
                 const btn = document.createElement('button');
                 btn.className = 'btn-option';
                 btn.textContent = optText;
-                
+
                 btn.addEventListener('click', () => {
                     if (!isAnswered) checkAnswer(index, currentQ.correctIndex);
                 });
-                optionsGrid.appendChild(btn);
+                if (optionsGrid) optionsGrid.appendChild(btn);
             });
 
         } else if (type === 'Emparejar') {
             // Setup dual column match board
-            questionCounter.textContent = `Par 0 de ${currentActivity.questions.length}`;
-            scoreDisplay.textContent = `Puntos: ${score}`;
-            
-            questionText.style.display = 'none';
-            questionMedia.style.display = 'none';
-            optionsGrid.style.display = 'none';
-            matchGrid.style.display = 'grid';
-            
-            matchColLeft.innerHTML = '';
-            matchColRight.innerHTML = '';
-            
+            if (questionCounter) questionCounter.textContent = `Par 0 de ${currentActivity.questions.length}`;
+            if (scoreDisplay) scoreDisplay.textContent = `Puntos: ${score}`;
+
+            if (questionText) questionText.style.display = 'none';
+            if (questionMedia) questionMedia.style.display = 'none';
+            if (optionsGrid) optionsGrid.style.display = 'none';
+            if (matchGrid) matchGrid.style.display = 'grid';
+
+            if (matchColLeft) matchColLeft.innerHTML = '';
+            if (matchColRight) matchColRight.innerHTML = '';
+
             matchedPairsCount = 0;
             matchSelectedLeft = null;
             matchSelectedRight = null;
-            
+
             let leftItems = [];
             let rightItems = [];
-            
+
             currentActivity.questions.forEach((q, idx) => {
                 leftItems.push({ id: idx, text: q.leftText, imageUrl: q.imageUrl });
                 rightItems.push({ id: idx, text: q.rightText });
             });
-            
+
             function shuffleArray(array) {
                 for (let i = array.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [array[i], array[j]] = [array[j], array[i]];
                 }
             }
-            
+
             shuffleArray(leftItems);
             shuffleArray(rightItems);
-            
+
             leftItems.forEach((item, i) => {
                 const btn = document.createElement('button');
                 btn.className = 'match-item';
                 btn.style.animationDelay = `${i * 0.05}s`;
-                
+
                 let inner = '';
                 if (item.imageUrl) {
                     inner += `<img src="${item.imageUrl}" alt="Media">`;
                 }
                 inner += `<span>${item.text}</span>`;
                 btn.innerHTML = inner;
-                
+
                 btn.dataset.id = item.id;
                 btn.dataset.side = 'left';
-                
+
                 btn.addEventListener('click', () => handleMatchClick(btn, 'left'));
-                matchColLeft.appendChild(btn);
+                if (matchColLeft) matchColLeft.appendChild(btn);
             });
-            
+
             rightItems.forEach((item, i) => {
                 const btn = document.createElement('button');
                 btn.className = 'match-item';
@@ -509,9 +535,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.innerHTML = `<span>${item.text}</span>`;
                 btn.dataset.id = item.id;
                 btn.dataset.side = 'right';
-                
+
                 btn.addEventListener('click', () => handleMatchClick(btn, 'right'));
-                matchColRight.appendChild(btn);
+                if (matchColRight) matchColRight.appendChild(btn);
             });
         }
     }
@@ -520,43 +546,51 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkAnswer(selectedIndex, actualCorrectIndex) {
         isAnswered = true;
         const isCorrect = (selectedIndex === actualCorrectIndex);
-        
-        const allBtns = optionsGrid.querySelectorAll('.btn-option');
-        allBtns.forEach((btn, idx) => {
-            btn.disabled = true;
-            if (idx === actualCorrectIndex) {
-                btn.classList.add('correct');
-            } else if (idx === selectedIndex && !isCorrect) {
-                btn.classList.add('incorrect');
-            }
-        });
 
-        gameFeedback.style.display = 'block';
+        if (optionsGrid) {
+            const allBtns = optionsGrid.querySelectorAll('.btn-option');
+            allBtns.forEach((btn, idx) => {
+                btn.disabled = true;
+                if (idx === actualCorrectIndex) {
+                    btn.classList.add('correct');
+                } else if (idx === selectedIndex && !isCorrect) {
+                    btn.classList.add('incorrect');
+                }
+            });
+        }
+
+        if (gameFeedback) gameFeedback.style.display = 'block';
         if (isCorrect) {
             score++;
-            scoreDisplay.textContent = `Puntos: ${score}`;
-            feedbackText.textContent = '¡Correcto!';
-            feedbackText.className = 'correct-text';
+            if (scoreDisplay) scoreDisplay.textContent = `Puntos: ${score}`;
+            if (feedbackText) {
+                feedbackText.textContent = '¡Correcto!';
+                feedbackText.className = 'correct-text';
+            }
         } else {
-            feedbackText.textContent = 'Incorrecto';
-            feedbackText.className = 'incorrect-text';
-        }
-        
-        if (currentQuestionIndex === currentActivity.questions.length - 1) {
-            btnNextQuestion.textContent = 'Ver Resultados';
-        } else {
-            btnNextQuestion.textContent = 'Siguiente';
+            if (feedbackText) {
+                feedbackText.textContent = 'Incorrecto';
+                feedbackText.className = 'incorrect-text';
+            }
         }
 
-        setTimeout(() => {
-            btnNextQuestion.style.display = 'inline-block';
-        }, 600);
+        if (btnNextQuestion) {
+            if (currentQuestionIndex === currentActivity.questions.length - 1) {
+                btnNextQuestion.textContent = 'Ver Resultados';
+            } else {
+                btnNextQuestion.textContent = 'Siguiente';
+            }
+
+            setTimeout(() => {
+                if (btnNextQuestion) btnNextQuestion.style.display = 'inline-block';
+            }, 600);
+        }
     }
 
     // Match Board Logic
     function handleMatchClick(btn, side) {
         if (btn.classList.contains('match-matched')) return;
-        
+
         if (side === 'left') {
             if (matchSelectedLeft) matchSelectedLeft.classList.remove('match-selected');
             matchSelectedLeft = btn;
@@ -566,19 +600,19 @@ document.addEventListener('DOMContentLoaded', () => {
             matchSelectedRight = btn;
             btn.classList.add('match-selected');
         }
-        
+
         if (matchSelectedLeft && matchSelectedRight) {
             checkMatchPair();
         }
     }
-    
+
     function checkMatchPair() {
         const leftId = matchSelectedLeft.dataset.id;
         const rightId = matchSelectedRight.dataset.id;
-        
+
         const btnL = matchSelectedLeft;
         const btnR = matchSelectedRight;
-        
+
         if (leftId === rightId) {
             // Correct match
             btnL.classList.remove('match-selected');
@@ -587,211 +621,247 @@ document.addEventListener('DOMContentLoaded', () => {
             btnR.classList.add('match-matched');
             btnL.disabled = true;
             btnR.disabled = true;
-            
+
             score++;
             matchedPairsCount++;
-            
-            questionCounter.textContent = `Par ${matchedPairsCount} de ${currentActivity.questions.length}`;
-            scoreDisplay.textContent = `Puntos: ${score}`;
-            
-            if (matchedPairsCount === currentActivity.questions.length) {
+
+            if (questionCounter) questionCounter.textContent = `Par ${matchedPairsCount} de ${currentActivity.questions.length}`;
+            if (scoreDisplay) scoreDisplay.textContent = `Puntos: ${score}`;
+
+            if (matchedPairsCount === currentActivity.questions.length && btnNextQuestion) {
                 btnNextQuestion.textContent = 'Ver Resultados';
                 setTimeout(() => {
-                    btnNextQuestion.style.display = 'inline-block';
+                    if (btnNextQuestion) btnNextQuestion.style.display = 'inline-block';
                 }, 600);
             }
-            
+
         } else {
             // Incorrect match
             btnL.classList.add('match-error');
             btnR.classList.add('match-error');
-            
+
             setTimeout(() => {
                 btnL.classList.remove('match-error', 'match-selected');
                 btnR.classList.remove('match-error', 'match-selected');
             }, 500);
         }
-        
+
         // Reset selections
         matchSelectedLeft = null;
         matchSelectedRight = null;
     }
 
-    btnNextQuestion.addEventListener('click', () => {
-        if (currentActivity.type === 'Emparejar' || currentQuestionIndex >= currentActivity.questions.length - 1) {
-            fadeTransition(() => {
-                showResults();
-            });
-        } else {
-            currentQuestionIndex++;
-            fadeTransition(() => {
-                renderQuestion();
-            });
-        }
-    });
-
-    function showResults() {
-        gameContainer.style.display = 'none';
-        resultsContainer.style.display = 'flex';
-        
-        finalScoreText.textContent = score;
-        totalScoreText.textContent = currentActivity.questions.length;
+    if (btnNextQuestion) {
+        btnNextQuestion.addEventListener('click', () => {
+            if (currentActivity.type === 'Emparejar' || currentQuestionIndex >= currentActivity.questions.length - 1) {
+                fadeTransition(() => {
+                    showResults();
+                });
+            } else {
+                currentQuestionIndex++;
+                fadeTransition(() => {
+                    renderQuestion();
+                });
+            }
+        });
     }
 
-    btnRestartGame.addEventListener('click', () => {
-        playActivity(currentActivity);
-    });
+    function showResults() {
+        if (gameContainer) gameContainer.style.display = 'none';
+        if (resultsContainer) resultsContainer.style.display = 'flex';
+
+        if (finalScoreText) finalScoreText.textContent = score;
+        if (totalScoreText) totalScoreText.textContent = currentActivity.questions.length;
+    }
+
+    if (btnRestartGame) {
+        btnRestartGame.addEventListener('click', () => {
+            playActivity(currentActivity);
+        });
+    }
 
     // Image Search Logic
-    btnCloseModal.addEventListener('click', () => {
-        searchModal.style.display = 'none';
-    });
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', () => {
+            if (searchModal) searchModal.style.display = 'none';
+        });
+    }
 
     async function searchImages(query) {
         if (!query) return;
-        
-        searchLoader.style.display = 'block';
-        searchResultsGrid.innerHTML = '';
-        
+
+        if (searchLoader) searchLoader.style.display = 'block';
+        if (searchResultsGrid) searchResultsGrid.innerHTML = '';
+
         try {
             // Usar Wikipedia PageImages para obtener imágenes altamente relevantes basadas en artículos
             const url = `https://es.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=20&prop=pageimages&piprop=original&format=json&origin=*`;
             const response = await fetch(url);
             const data = await response.json();
-            
-            searchLoader.style.display = 'none';
-            
+
+            if (searchLoader) searchLoader.style.display = 'none';
+
             if (data.query && data.query.pages) {
                 const pages = Object.values(data.query.pages);
                 let addedCount = 0;
-                
+
                 pages.forEach(page => {
                     // Verificamos si el artículo tiene una imagen principal (pageimage original)
                     if (page.original && page.original.source) {
                         const imgUrl = page.original.source;
-                        
+
                         addedCount++;
                         const imgEl = document.createElement('img');
                         imgEl.src = imgUrl;
                         imgEl.className = 'image-result';
                         imgEl.style.animation = `slideUpFade 0.3s ease ${addedCount * 0.05}s backwards`;
-                        
+
                         imgEl.addEventListener('click', () => {
                             if (currentImageTarget) {
                                 currentImageTarget.input.value = imgUrl;
                                 currentImageTarget.preview.src = imgUrl;
                                 currentImageTarget.container.style.display = 'block';
                             }
-                            searchModal.style.display = 'none';
+                            if (searchModal) searchModal.style.display = 'none';
                         });
-                        
-                        searchResultsGrid.appendChild(imgEl);
+
+                        if (searchResultsGrid) searchResultsGrid.appendChild(imgEl);
                     }
                 });
-                
+
                 if (addedCount === 0) {
-                    searchResultsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">No se encontraron fotografías para esta búsqueda.</p>';
+                    if (searchResultsGrid) searchResultsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">No se encontraron fotografías para esta búsqueda.</p>';
                 }
             } else {
-                searchResultsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">No se encontraron resultados.</p>';
+                if (searchResultsGrid) searchResultsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 20px;">No se encontraron resultados.</p>';
             }
         } catch (err) {
             console.error(err);
-            searchLoader.style.display = 'none';
-            searchResultsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 20px;">Error de red al buscar imágenes.</p>';
+            if (searchLoader) searchLoader.style.display = 'none';
+            if (searchResultsGrid) searchResultsGrid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 20px;">Error de red al buscar imágenes.</p>';
         }
     }
 
-    btnSearchExecute.addEventListener('click', () => {
-        const query = searchInput.value.trim();
-        if (query) searchImages(query);
-    });
-
-    searchInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+    if (btnSearchExecute && searchInput) {
+        btnSearchExecute.addEventListener('click', () => {
             const query = searchInput.value.trim();
             if (query) searchImages(query);
-        }
-    });
+        });
+    }
 
-    // Lógica para Compartir
-    btnShareActivity.addEventListener('click', async () => {
-        if (!currentActivity) return;
-        
-        const originalText = btnShareActivity.innerHTML;
-        btnShareActivity.innerHTML = '⏳ Generando link...';
-        btnShareActivity.disabled = true;
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const query = searchInput.value.trim();
+                if (query) searchImages(query);
+            }
+        });
+    }
+
+    // Lógica para Compartir con Firestore
+    async function getDirectLink() {
+        if (!currentActivity) return '';
 
         try {
-            const jsonStr = JSON.stringify(currentActivity);
-            const base64Data = btoa(encodeURIComponent(jsonStr));
-            const longUrl = `${window.location.origin}${window.location.pathname}?data=${base64Data}`;
-            
-            console.log("Link largo generado:", longUrl);
-            
-            let finalUrl = longUrl;
+            const docRef = await db.collection("activities").add({
+                data: JSON.stringify(currentActivity),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            const id = docRef.id;
+            return `${window.location.origin}${window.location.pathname}?id=${id}`;
+        } catch (e) {
+            console.error("Error guardando en Firestore:", e);
+            throw e;
+        }
+    }
+
+    if (btnCopyLink) {
+        btnCopyLink.addEventListener('click', async () => {
+            if (!currentActivity) return;
+
+            const originalText = btnCopyLink.innerHTML;
+            btnCopyLink.innerHTML = '⏳ Guardando...';
+            btnCopyLink.disabled = true;
 
             try {
-                const response = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`);
-                const responseText = await response.text();
-                
-                console.log("Respuesta de is.gd:", responseText);
+                const link = await getDirectLink();
+                await navigator.clipboard.writeText(link);
 
-                if (response.ok && responseText.includes("is.gd")) {
-                    finalUrl = responseText;
-                } else {
-                    console.warn("Respuesta inválida de is.gd, usando fallback.");
+                if (toastNotification) {
+                    toastNotification.textContent = "Link copiado 🔗";
+                    toastNotification.classList.add('show');
+                    setTimeout(() => {
+                        toastNotification.classList.remove('show');
+                    }, 3000);
                 }
-            } catch (apiError) {
-                console.error("Error en petición a is.gd, usando link largo:", apiError);
+
+            } catch (e) {
+                console.error("Error copiando enlace:", e);
+                if (toastNotification) {
+                    toastNotification.textContent = "Error al guardar/copiar";
+                    toastNotification.classList.add('show');
+                    setTimeout(() => {
+                        toastNotification.classList.remove('show');
+                    }, 3000);
+                }
+            } finally {
+                btnCopyLink.innerHTML = originalText;
+                btnCopyLink.disabled = false;
             }
-            
-            await navigator.clipboard.writeText(finalUrl);
-            
-            toastNotification.textContent = "Link copiado 🔗";
-            toastNotification.classList.add('show');
-            setTimeout(() => {
-                toastNotification.classList.remove('show');
-            }, 3000);
-            
-        } catch (e) {
-            console.error("Error generando/copiando enlace:", e);
-            toastNotification.textContent = "Error al generar enlace";
-            toastNotification.classList.add('show');
-            setTimeout(() => {
-                toastNotification.classList.remove('show');
-            }, 3000);
-        } finally {
-            btnShareActivity.innerHTML = originalText;
-            btnShareActivity.disabled = false;
-        }
-    });
-
-    // Inicialización y Carga desde URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const sharedData = urlParams.get('data');
-
-    if (sharedData) {
-        try {
-            const decodedJson = decodeURIComponent(atob(sharedData));
-            const sharedActivity = JSON.parse(decodedJson);
-            
-            // Limpiar la URL sin recargar la página
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            // Renderizar la lista subyacente para mantener estado
-            renderActivities();
-            
-            // Jugar directamente
-            playActivity(sharedActivity);
-            navigateTo('preview-view');
-        } catch (e) {
-            console.error("Error decodificando actividad compartida:", e);
-            alert("El enlace parece estar roto o corrupto. Cargando inicio normal.");
-            renderActivities();
-        }
-    } else {
-        // Iniciar pintando la lista
-        renderActivities();
+        });
     }
+
+    if (btnWhatsappShare) {
+        btnWhatsappShare.addEventListener('click', async () => {
+            if (!currentActivity) return;
+
+            const originalText = btnWhatsappShare.innerHTML;
+            btnWhatsappShare.innerHTML = '⏳ Preparando...';
+            btnWhatsappShare.disabled = true;
+
+            try {
+                const link = await getDirectLink();
+                const text = encodeURIComponent(`Resuelve esta actividad: ${link}`);
+                window.open(`https://wa.me/?text=${text}`, '_blank');
+            } catch (e) {
+                console.error("Error compartiendo en WhatsApp:", e);
+                alert("Hubo un error al generar el enlace.");
+            } finally {
+                btnWhatsappShare.innerHTML = originalText;
+                btnWhatsappShare.disabled = false;
+            }
+        });
+    }
+
+    // Inicialización y Carga desde URL con Firestore
+    async function checkUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const sharedId = urlParams.get('id');
+
+        if (sharedId) {
+            try {
+                const doc = await db.collection("activities").doc(sharedId).get();
+
+                if (doc.exists) {
+                    const sharedActivity = JSON.parse(doc.data().data);
+
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                    renderActivities();
+                    playActivity(sharedActivity);
+                    navigateTo('preview-view');
+                } else {
+                    alert("La actividad no existe o ha sido eliminada.");
+                    renderActivities();
+                }
+            } catch (e) {
+                console.error("Error cargando actividad desde Firestore:", e);
+                alert("Hubo un error al cargar la actividad. Cargando inicio normal.");
+                renderActivities();
+            }
+        } else {
+            renderActivities();
+        }
+    }
+
+    checkUrlParams();
 });
