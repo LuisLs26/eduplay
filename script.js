@@ -730,27 +730,25 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("Link largo generado:", longUrl);
             
             let finalUrl = longUrl;
-            let successMessage = "Link normal copiado";
 
             try {
-                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                const response = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(longUrl)}`);
                 const responseText = await response.text();
                 
-                console.log("Respuesta de TinyURL:", responseText);
+                console.log("Respuesta de is.gd:", responseText);
 
-                if (response.ok && responseText.includes("tinyurl.com")) {
+                if (response.ok && responseText.includes("is.gd")) {
                     finalUrl = responseText;
-                    successMessage = "Link corto copiado 🔗";
                 } else {
-                    console.warn("Respuesta inválida de TinyURL o sin link corto, usando fallback.");
+                    console.warn("Respuesta inválida de is.gd, usando fallback.");
                 }
             } catch (apiError) {
-                console.error("Error en petición a TinyURL, usando link largo:", apiError);
+                console.error("Error en petición a is.gd, usando link largo:", apiError);
             }
             
             await navigator.clipboard.writeText(finalUrl);
             
-            toastNotification.textContent = successMessage;
+            toastNotification.textContent = "Link copiado 🔗";
             toastNotification.classList.add('show');
             setTimeout(() => {
                 toastNotification.classList.remove('show');
@@ -758,7 +756,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
         } catch (e) {
             console.error("Error generando/copiando enlace:", e);
-            alert("Hubo un problema al generar o copiar el enlace de la actividad.");
+            toastNotification.textContent = "Error al generar enlace";
+            toastNotification.classList.add('show');
+            setTimeout(() => {
+                toastNotification.classList.remove('show');
+            }, 3000);
         } finally {
             btnShareActivity.innerHTML = originalText;
             btnShareActivity.disabled = false;
