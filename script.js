@@ -727,18 +727,25 @@ document.addEventListener('DOMContentLoaded', () => {
             const base64Data = btoa(encodeURIComponent(jsonStr));
             const longUrl = `${window.location.origin}${window.location.pathname}?data=${base64Data}`;
             
+            console.log("Link largo generado:", longUrl);
+            
             let finalUrl = longUrl;
             let successMessage = "Link normal copiado";
 
             try {
                 const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
-                if (response.ok) {
-                    const shortUrl = await response.text();
-                    finalUrl = shortUrl;
+                const responseText = await response.text();
+                
+                console.log("Respuesta de TinyURL:", responseText);
+
+                if (response.ok && responseText.includes("tinyurl.com")) {
+                    finalUrl = responseText;
                     successMessage = "Link corto copiado 🔗";
+                } else {
+                    console.warn("Respuesta inválida de TinyURL o sin link corto, usando fallback.");
                 }
             } catch (apiError) {
-                console.warn("Error en TinyURL, usando link largo:", apiError);
+                console.error("Error en petición a TinyURL, usando link largo:", apiError);
             }
             
             await navigator.clipboard.writeText(finalUrl);
