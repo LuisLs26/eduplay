@@ -715,25 +715,46 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Lógica para Compartir
-    btnShareActivity.addEventListener('click', () => {
+    btnShareActivity.addEventListener('click', async () => {
         if (!currentActivity) return;
+        
+        const originalText = btnShareActivity.innerHTML;
+        btnShareActivity.innerHTML = '⏳ Generando link...';
+        btnShareActivity.disabled = true;
+
         try {
             const jsonStr = JSON.stringify(currentActivity);
             const base64Data = btoa(encodeURIComponent(jsonStr));
-            const shareUrl = `${window.location.origin}${window.location.pathname}?data=${base64Data}`;
+            const longUrl = `${window.location.origin}${window.location.pathname}?data=${base64Data}`;
             
-            navigator.clipboard.writeText(shareUrl).then(() => {
-                toastNotification.classList.add('show');
-                setTimeout(() => {
-                    toastNotification.classList.remove('show');
-                }, 3000);
-            }).catch(err => {
-                console.error("Error copiando al portapapeles:", err);
-                alert("No se pudo copiar el enlace automáticamente. Aquí lo tienes: " + shareUrl);
-            });
+            let finalUrl = longUrl;
+            let successMessage = "Link normal copiado";
+
+            try {
+                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                if (response.ok) {
+                    const shortUrl = await response.text();
+                    finalUrl = shortUrl;
+                    successMessage = "Link corto copiado 🔗";
+                }
+            } catch (apiError) {
+                console.warn("Error en TinyURL, usando link largo:", apiError);
+            }
+            
+            await navigator.clipboard.writeText(finalUrl);
+            
+            toastNotification.textContent = successMessage;
+            toastNotification.classList.add('show');
+            setTimeout(() => {
+                toastNotification.classList.remove('show');
+            }, 3000);
+            
         } catch (e) {
-            console.error("Error generando enlace:", e);
-            alert("Hubo un problema al generar el enlace de la actividad.");
+            console.error("Error generando/copiando enlace:", e);
+            alert("Hubo un problema al generar o copiar el enlace de la actividad.");
+        } finally {
+            btnShareActivity.innerHTML = originalText;
+            btnShareActivity.disabled = false;
         }
     });
 
