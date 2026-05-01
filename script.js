@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const gameMainTitle = document.getElementById('game-main-title');
     const gameMainSubtitle = document.getElementById('game-main-subtitle');
+    const btnShareActivity = document.getElementById('btn-share-activity');
+    const toastNotification = document.getElementById('toast-notification');
 
     const questionCounter = document.getElementById('question-counter');
     const scoreDisplay = document.getElementById('score-display');
@@ -103,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             resultsContainer.style.display = 'none';
             gameMainTitle.textContent = "Vista previa";
             gameMainSubtitle.textContent = "Prueba tu actividad antes de compartirla.";
+            btnShareActivity.style.display = 'none';
         }
     }
 
@@ -395,6 +398,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         gameMainTitle.textContent = `Jugando: ${activity.title}`;
         gameMainSubtitle.textContent = `Tipo: ${activity.type}`;
+        btnShareActivity.style.display = 'flex';
         
         previewPlaceholder.style.display = 'none';
         resultsContainer.style.display = 'none';
@@ -710,6 +714,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Iniciar pintando la lista
-    renderActivities();
+    // Lógica para Compartir
+    btnShareActivity.addEventListener('click', () => {
+        if (!currentActivity) return;
+        try {
+            const jsonStr = JSON.stringify(currentActivity);
+            const base64Data = btoa(encodeURIComponent(jsonStr));
+            const shareUrl = `${window.location.origin}${window.location.pathname}?data=${base64Data}`;
+            
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                toastNotification.classList.add('show');
+                setTimeout(() => {
+                    toastNotification.classList.remove('show');
+                }, 3000);
+            }).catch(err => {
+                console.error("Error copiando al portapapeles:", err);
+                alert("No se pudo copiar el enlace automáticamente. Aquí lo tienes: " + shareUrl);
+            });
+        } catch (e) {
+            console.error("Error generando enlace:", e);
+            alert("Hubo un problema al generar el enlace de la actividad.");
+        }
+    });
+
+    // Inicialización y Carga desde URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedData = urlParams.get('data');
+
+    if (sharedData) {
+        try {
+            const decodedJson = decodeURIComponent(atob(sharedData));
+            const sharedActivity = JSON.parse(decodedJson);
+            
+            // Limpiar la URL sin recargar la página
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Renderizar la lista subyacente para mantener estado
+            renderActivities();
+            
+            // Jugar directamente
+            playActivity(sharedActivity);
+            navigateTo('preview-view');
+        } catch (e) {
+            console.error("Error decodificando actividad compartida:", e);
+            alert("El enlace parece estar roto o corrupto. Cargando inicio normal.");
+            renderActivities();
+        }
+    } else {
+        // Iniciar pintando la lista
+        renderActivities();
+    }
 });
