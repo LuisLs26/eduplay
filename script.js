@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
     const navLinks = document.querySelectorAll('.nav-links a');
     const views = document.querySelectorAll('.view');
@@ -73,6 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let matchSelectedLeft = null;
     let matchSelectedRight = null;
     let matchedPairsCount = 0;
+
+    // Auth UI refs
+    const btnLogin = document.getElementById('btn-login');
+    const btnLogout = document.getElementById('btn-logout');
+    const userInfo = document.getElementById('user-info');
+    const userPhoto = document.getElementById('user-photo');
+    const userName = document.getElementById('user-name');
 
     // 1. Obtener actividades
     function getActivities() {
@@ -376,6 +384,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (hasErrors) {
                 alert('Por favor completa todos los campos de texto requeridos.');
+                return;
+            }
+
+            // Guard: require login to save
+            const user = auth.currentUser;
+            if (!user) {
+                alert('Debes iniciar sesión con Google para crear actividades.');
                 return;
             }
 
@@ -762,9 +777,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function getDirectLink() {
         if (!currentActivity) return '';
 
+        const user = auth.currentUser;
+        if (!user) {
+            alert('Debes iniciar sesión para compartir actividades.');
+            throw new Error('Not authenticated');
+        }
+
         try {
             const docRef = await db.collection("activities").add({
                 data: JSON.stringify(currentActivity),
+                uid: user.uid,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             const id = docRef.id;
@@ -863,5 +885,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    checkUrlParams();
+    // ── Auth: Google Login / Logout / State ─────────────────────────────────
+    if (btnLogin) {
+        btnLogin.addEventListener('click', async () => {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            try {
+                await auth.signInWithPopup(provider);
+            } catch (e) {
+                console.error('Error en login:', e);
+                alert('No se pudo iniciar sesión. Inténtalo de nuevo.');
+            }
+        });
+    }
+
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            try {
+                await auth.signOut();
+            } catch (e) {
+                console.error('Error en logout:', e);
+            }
+        });
+    }
+
+    // Reacts to login / logout automatically
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            // Show user info, hide login button
+            if (btnLogin) btnLogin.style.display = 'none';
+            if (userInfo) userInfo.style.display = 'flex';
+            if (userName) userName.textContent = user.displayName || 'Usuario';
+            if (userPhoto) {
+                userPhoto.src = user.photoURL || '';
+                userPhoto.style.display = user.photoURL ? 'block' : 'none';
+            }
+        } else {
+            // Show login button, hide user info
+            if (btnLogin) btnLogin.style.display = 'flex';
+            if (userInfo) userInfo.style.display = 'none';
+        }
+        // Always run URL check so shared links work even without login
+        checkUrlParams();
+    });
 });
