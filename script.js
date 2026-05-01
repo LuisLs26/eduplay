@@ -8,7 +8,13 @@ document.addEventListener('DOMContentLoaded', () => {
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-
+    auth.getRedirectResult().then((result) => {
+        if (result.user) {
+            console.log("Usuario logueado via redirect:", result.user);
+        }
+    }).catch((error) => {
+        console.error("Error en redirect:", error);
+    });
     const navLinks = document.querySelectorAll('.nav-links a');
     const views = document.querySelectorAll('.view');
     const createForm = document.getElementById('create-form');
@@ -890,7 +896,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnLogin.addEventListener('click', async () => {
             const provider = new firebase.auth.GoogleAuthProvider();
             try {
-                await auth.signInWithPopup(provider);
+                await auth.signInWithRedirect(provider);
             } catch (e) {
                 console.error('Error en login:', e);
                 alert('No se pudo iniciar sesión. Inténtalo de nuevo.');
