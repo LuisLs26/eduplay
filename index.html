@@ -4,220 +4,731 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Actividades</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
+    <title>EduPlay</title>
+    <meta name="description" content="Crea actividades educativas interactivas con EduPlay.">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="styles.css?v=115">
 </head>
 
 <body>
-    <div class="app-container">
-        <!-- Barra lateral de navegación -->
-        <nav class="sidebar">
-            <div class="sidebar-header">
-                <h2>EduPlay</h2>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         GAME OVERLAY — Cubre toda la pantalla al jugar.
+         Independiente del editor/sidebar/header.
+         ═══════════════════════════════════════════════════════════ -->
+    <div id="game-overlay" class="game-overlay" style="display:none;">
+
+        <!-- Barra de progreso superior -->
+        <div class="overlay-progress-track">
+            <div class="overlay-progress-fill" id="overlay-progress-bar" style="width: 0%;"></div>
+        </div>
+
+        <!-- Barra superior del overlay -->
+        <div class="game-overlay-bar">
+            <div class="game-overlay-info">
+                <span class="question-counter" id="overlay-question-counter">Pregunta 1 de 5</span>
+                <span class="score-display" id="overlay-score-display">Puntos: 0</span>
             </div>
-            <ul class="nav-links">
-                <li><a href="#" data-target="create-view" class="active">
-                        <span class="icon">✨</span> Crear actividad
-                    </a></li>
-                <li><a href="#" data-target="list-view">
-                        <span class="icon">📚</span> Mis actividades
-                    </a></li>
-                <li><a href="#" data-target="preview-view">
-                        <span class="icon">▶️</span> Vista previa
-                    </a></li>
-            </ul>
-            <!-- Auth user block at the bottom of sidebar -->
+            <button id="btn-exit-game" class="btn-exit-game" title="Salir">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+                Salir
+            </button>
+        </div>
+
+        <!-- Pantalla de inicio del overlay -->
+        <div class="overlay-start-screen" id="overlay-start-screen">
+            <span class="overlay-type-badge" id="overlay-start-type">Tipo</span>
+            <h2 id="overlay-start-title">Título</h2>
+            <button id="btn-overlay-play" class="btn-primary"
+                style="font-size:1.2rem; padding:16px 48px; display:inline-flex; width:auto; border-radius:30px; margin:24px auto 0;">
+                <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style="margin-right:8px;">
+                    <path d="M8 5v14l11-7z" />
+                </svg>
+                Jugar
+            </button>
+        </div>
+
+        <!-- Contenido del juego -->
+        <div class="overlay-game-body" id="overlay-game-body" style="display:none;">
+            <!-- Tarjeta de pregunta (Media + Texto) -->
+            <div class="question-card" id="overlay-question-card">
+                <div class="question-media" id="overlay-question-media" style="display:none;">
+                    <img id="overlay-game-image" src="" alt="Imagen">
+                </div>
+                <h2 class="question-text" id="overlay-question-text" style="display:none;">¿Texto de la pregunta?</h2>
+            </div>
+
+            <!-- Opciones múltiple / V o F -->
+            <div class="options-grid" id="overlay-options-grid"></div>
+
+            <!-- Emparejar -->
+            <div class="match-grid" id="overlay-match-grid" style="display:none;">
+                <div class="match-col" id="overlay-match-col-left"></div>
+                <div class="match-col" id="overlay-match-col-right"></div>
+            </div>
+
+            <!-- Rompecabezas -->
+            <div class="overlay-puzzle-wrap" id="overlay-puzzle-wrap" style="display:none;">
+                <div class="puzzle-board-container" id="puzzle-board-container">
+                    <div class="puzzle-blueprint" id="puzzle-blueprint"></div>
+                    <div class="puzzle-grid" id="overlay-puzzle-grid"></div>
+                </div>
+                <div class="puzzle-controls" style="margin-top: 14px; text-align: center; width: 100%;">
+                    <button type="button" id="btn-peek-puzzle-img" class="btn-secondary" style="font-size: 0.85rem; padding: 8px 16px; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-full);">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        Ver imagen original
+                    </button>
+                </div>
+            </div>
+
+            <!-- Modal para ver imagen de referencia del rompecabezas -->
+            <div id="puzzle-peek-modal" class="modal-peek" style="display:none;">
+                <div class="modal-peek-backdrop" id="puzzle-peek-backdrop"></div>
+                <div class="modal-peek-content">
+                    <div class="modal-peek-header">
+                        <h4>Imagen de referencia</h4>
+                        <button id="btn-close-peek-modal" class="btn-close-peek" type="button" title="Cerrar">&times;</button>
+                    </div>
+                    <img id="puzzle-peek-img" src="" alt="Referencia">
+                </div>
+            </div>
+
+            <!-- Ahorcado (se inyecta dinámicamente) -->
+
+            <!-- Feedback flotante central dinámico -->
+            <div class="floating-feedback" id="overlay-floating-feedback" style="display:none;">
+                <div class="feedback-badge" id="feedback-badge">
+                    <span class="feedback-icon" id="feedback-icon">✓</span>
+                    <span class="feedback-msg" id="feedback-msg">¡Correcto!</span>
+                </div>
+            </div>
+
+            <!-- Feedback inferior de apoyo / Siguiente -->
+            <div class="game-feedback" id="overlay-game-feedback" style="display:none;">
+                <button id="overlay-btn-next" class="btn-primary"
+                    style="width:auto;display:inline-flex;margin-top:16px;">Siguiente</button>
+            </div>
+        </div>
+
+        <!-- Pantalla de Resultados Prémium -->
+        <div class="overlay-results" id="overlay-results" style="display:none;">
+            <div class="results-card card">
+                <div class="results-trophy-badge" id="results-trophy-container">
+                    <lottie-player id="results-lottie-player" src="https://assets2.lottiefiles.com/packages/lf20_touohxv0.json" background="transparent" speed="1" style="width: 86px; height: 86px;" loop autoplay></lottie-player>
+                </div>
+                <h2 class="results-title" id="results-headline">¡Completado con éxito!</h2>
+                <p class="results-subtitle" id="results-subtitle">Has finalizado toda la actividad</p>
+                
+                <div class="results-stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Puntaje</span>
+                        <div class="stat-value">
+                            <span id="overlay-final-score">0</span> / <span id="overlay-total-score">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Efectividad</span>
+                        <div class="stat-value highlight">
+                            <span id="overlay-accuracy-percent">100</span>%
+                        </div>
+                    </div>
+                </div>
+
+                <div class="results-actions">
+                    <button id="overlay-btn-restart" class="btn-primary btn-results-restart">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M1 4v6h6M23 20v-6h-6"></path>
+                            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+                        </svg>
+                        Volver a jugar
+                    </button>
+                    <button id="overlay-btn-exit-results" class="btn-secondary btn-results-exit">
+                        Salir al inicio
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- /game-overlay -->
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="header-left">
+            <div id="main-logo" class="logo" style="display:flex; align-items:center; gap:8px;">
+                <img src="logo.png" alt="EduPlay Logo" class="logo-img">
+                <div style="display:flex; flex-direction:column; justify-content:center;">
+                    <h2 style="margin:0; line-height:1.05;">EduPlay</h2>
+                    <span style="font-family:'Times New Roman', Times, serif; font-weight:700; font-size:0.46rem; color:var(--text-secondary); opacity:0.85; letter-spacing:0.3px; margin-top:2px;">By Nureña Luis</span>
+                </div>
+            </div>
+            <button id="btn-back-to-types" class="btn-back" style="display:none;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M15 19l-7-7 7-7" />
+                </svg>
+                Cambiar tipo
+            </button>
+        </div>
+        <div class="header-right">
+            <button id="theme-toggle" class="theme-toggle-btn" title="Cambiar tema">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" />
+                </svg>
+            </button>
             <div class="sidebar-auth">
                 <button id="btn-login" class="btn-google-login">
-                    <svg width="18" height="18" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="18" height="18" viewBox="0 0 48 48">
                         <path fill="#FFC107"
                             d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
                         <path fill="#FF3D00"
                             d="m6.306 14.691 6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
                         <path fill="#4CAF50"
-                            d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+                            d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
                         <path fill="#1976D2"
-                            d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+                            d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
                     </svg>
-                    Iniciar con Google
+                    Iniciar
                 </button>
                 <div id="user-info" class="user-info-block" style="display:none;">
-                    <img id="user-photo" class="user-avatar" src="" alt="Foto de perfil" width="36" height="36">
-                    <div class="user-details">
+                    <div class="user-details-header">
                         <span id="user-name" class="user-name-text"></span>
-                        <span class="user-role">Docente</span>
                     </div>
-                    <button id="btn-logout" class="btn-logout" title="Cerrar sesión">↩</button>
+                    <div class="avatar-container">
+                        <img id="user-photo" class="user-avatar" src="" alt="Foto">
+                        <span class="status-dot"></span>
+                    </div>
+                    <button id="btn-logout" class="btn-logout" title="Cerrar sesión">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+                            <polyline points="16 17 21 12 16 7" />
+                            <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                    </button>
                 </div>
+            </div>
+            <button id="btn-save-activity" class="btn-save" style="display:none;">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                </svg>
+                <span class="save-text">Guardar</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <nav class="sidebar">
+            <ul class="nav-links sidebar-links">
+                <li><a href="#" data-target="create-view" class="active">
+                        <span class="nav-icon-wrap active-icon">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"
+                                viewBox="0 0 24 24">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                        </span>
+                        Crear actividad
+                    </a></li>
+                <li><a href="#" data-target="list-view">
+                        <span class="nav-icon-wrap">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="7" height="7" rx="1" />
+                                <rect x="14" y="3" width="7" height="7" rx="1" />
+                                <rect x="3" y="14" width="7" height="7" rx="1" />
+                                <rect x="14" y="14" width="7" height="7" rx="1" />
+                            </svg>
+                        </span>
+                        Mis actividades
+                    </a></li>
+                <li><a href="#" data-target="preview-view">
+                        <span class="nav-icon-wrap">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" />
+                                <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none" />
+                            </svg>
+                        </span>
+                        Vista previa
+                    </a></li>
+            </ul>
+            <div class="sidebar-illustration">
+                <img src="sidebar-illustration.png" alt="">
             </div>
         </nav>
 
-        <!-- Contenido principal -->
+        <!-- MAIN CONTENT -->
         <main class="main-content">
-            <!-- Sección: Crear actividad -->
+            <!-- CREATE VIEW: Type Selection -->
             <section id="create-view" class="view active">
                 <header class="view-header">
-                    <h1>Crear nueva actividad</h1>
-                    <p>Diseña una experiencia de aprendizaje interactiva.</p>
+                    <h1>¿Qué tipo de actividad quieres crear?</h1>
+                    <p>Elige el formato que mejor se adapte a tu contenido.</p>
                 </header>
-                <div class="card">
-                    <form id="create-form">
-                        <div class="form-group">
-                            <label for="activity-title">Título de la actividad</label>
-                            <input type="text" id="activity-title" placeholder="Ej. Capitales de Europa" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="activity-type">Tipo de actividad</label>
-                            <select id="activity-type" required>
-                                <option value="" disabled selected>Selecciona un tipo...</option>
-                                <option value="Opción múltiple">Opción múltiple</option>
-                                <option value="Verdadero/Falso">Verdadero o Falso</option>
-                                <option value="Emparejar">Emparejar elementos</option>
-                            </select>
-                        </div>
 
-                        <div class="form-group">
-                            <div
-                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                                <label style="margin-bottom: 0;">Preguntas de la actividad</label>
-                            </div>
-                            <div id="questions-container" class="questions-list">
-                                <!-- Las preguntas se inyectan aquí -->
-                            </div>
-                            <button type="button" id="btn-add-question" class="btn-secondary">+ Agregar otra
-                                pregunta</button>
+                <div class="section-label">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                    </svg>
+                    Tipos
+                </div>
+                <div class="types-grid">
+                    <div class="type-card selected" data-type="Opción múltiple">
+                        <span class="type-card-badge badge-violet">Preguntas</span>
+                        <div class="type-card-icon">
+                            <svg width="56" height="56" viewBox="0 0 60 60" fill="none">
+                                <rect x="6" y="6" width="22" height="22" rx="7" fill="#6366F1"/>
+                                <rect x="32" y="6" width="22" height="22" rx="7" fill="#818CF8"/>
+                                <rect x="6" y="32" width="22" height="22" rx="7" fill="#818CF8"/>
+                                <rect x="32" y="32" width="22" height="22" rx="7" fill="#A5B4FC"/>
+                                <text x="17" y="21" fill="white" font-size="12" font-weight="900" text-anchor="middle" font-family="sans-serif">A</text>
+                                <text x="43" y="21" fill="white" font-size="12" font-weight="900" text-anchor="middle" font-family="sans-serif">B</text>
+                                <text x="17" y="47" fill="white" font-size="12" font-weight="900" text-anchor="middle" font-family="sans-serif">C</text>
+                                <text x="43" y="47" fill="white" font-size="12" font-weight="900" text-anchor="middle" font-family="sans-serif">D</text>
+                            </svg>
                         </div>
-
-                        <button type="submit" class="btn-primary" style="margin-top: 16px;">Crear Actividad</button>
-                    </form>
+                        <h3>Opción múltiple</h3>
+                        <p>Una pregunta con varias alternativas de respuesta.</p>
+                        <button class="btn-select-type" type="button">Seleccionar
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M5 12h14" />
+                                <path d="M12 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="type-card" data-type="Verdadero/Falso">
+                        <span class="type-card-badge badge-green">Lógica</span>
+                        <div class="type-card-icon">
+                            <svg width="56" height="56" viewBox="0 0 60 60" fill="none">
+                                <circle cx="21" cy="30" r="17" fill="#10B981"/>
+                                <path d="M14 30 L19 35 L28 24" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="41" cy="30" r="15" fill="#EF4444"/>
+                                <path d="M35 24 L47 36 M47 24 L35 36" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3>Verdadero o falso</h3>
+                        <p>El estudiante decide si la afirmación es verdadera o falsa.</p>
+                        <button class="btn-select-type" type="button">Seleccionar
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M5 12h14" />
+                                <path d="M12 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="type-card" data-type="Emparejar">
+                        <span class="type-card-badge badge-amber">Memoria</span>
+                        <div class="type-card-icon">
+                            <svg width="56" height="56" viewBox="0 0 60 60" fill="none">
+                                <rect x="5" y="10" width="18" height="16" rx="6" fill="#F59E0B"/>
+                                <rect x="37" y="10" width="18" height="16" rx="6" fill="#6366F1"/>
+                                <path d="M23 18 C30 18, 30 42, 37 42" stroke="#F59E0B" stroke-width="3.5" stroke-linecap="round"/>
+                                <rect x="5" y="34" width="18" height="16" rx="6" fill="#818CF8"/>
+                                <rect x="37" y="34" width="18" height="16" rx="6" fill="#FBBF24"/>
+                                <path d="M23 42 C30 42, 30 18, 37 18" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="3 3"/>
+                            </svg>
+                        </div>
+                        <h3>Emparejar elementos</h3>
+                        <p>Relaciona elementos de una columna con otra.</p>
+                        <button class="btn-select-type" type="button">Seleccionar
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M5 12h14" />
+                                <path d="M12 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="type-card" data-type="Ahorcado">
+                        <span class="type-card-badge badge-rose">Vocabulario</span>
+                        <div class="type-card-icon">
+                            <svg width="56" height="56" viewBox="0 0 60 60" fill="none">
+                                <rect x="8" y="10" width="44" height="42" rx="10" fill="#F43F5E"/>
+                                <path d="M16 42 L24 42 M20 42 L20 20 L30 20 L30 24" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="30" cy="27" r="3" stroke="white" stroke-width="2"/>
+                                <rect x="27" y="34" width="9" height="11" rx="3" fill="white"/>
+                                <rect x="38" y="34" width="9" height="11" rx="3" fill="white"/>
+                                <text x="31.5" y="42.5" fill="#E11D48" font-size="8" font-weight="900" text-anchor="middle" font-family="sans-serif">A</text>
+                                <text x="42.5" y="42.5" fill="#E11D48" font-size="8" font-weight="900" text-anchor="middle" font-family="sans-serif">B</text>
+                            </svg>
+                        </div>
+                        <h3>Ahorcado</h3>
+                        <p>Adivina la palabra oculta letra por letra.</p>
+                        <button class="btn-select-type" type="button">Seleccionar
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M5 12h14" />
+                                <path d="M12 5l7 7-7 7" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="type-card" data-type="Rompecabezas">
+                        <span class="type-card-badge badge-cyan">Visual</span>
+                        <div class="type-card-icon">
+                            <svg width="56" height="56" viewBox="0 0 60 60" fill="none">
+                                <path d="M12 12 H28 C28 16 32 16 32 12 H48 V28 C44 28 44 32 48 32 V48 H32 C32 44 28 44 28 48 H12 V32 C16 32 16 28 12 28 Z" fill="#06B6D4"/>
+                                <path d="M28 20 C28 24 32 24 32 20" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h3>Rompecabezas</h3>
+                        <p>Ordena las piezas de una imagen para ganar.</p>
+                        <button class="btn-select-type" type="button">Seleccionar
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M5 12h14" />
+                                <path d="M12 5l7 7-7 7" />
+                            </svg>
+                    </div>
                 </div>
             </section>
 
-            <!-- Sección: Mis actividades -->
+            <!-- EDIT VIEW: Activity Editor -->
+            <section id="edit-view" class="view">
+                <div class="editor-type-banner" style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:14px; flex:1;">
+                        <div class="editor-type-icon" id="editor-type-icon"></div>
+                        <div>
+                            <h2 id="editor-type-title">Opción múltiple</h2>
+                            <p id="editor-type-desc">Crea preguntas con varias alternativas de respuesta.</p>
+                        </div>
+                    </div>
+                    <button type="button" id="btn-open-ai-modal-editor" class="btn-ai-sparkle-sm" title="Generar contenido con Inteligencia Artificial">
+                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z"/></svg>
+                        Generar con IA
+                    </button>
+                </div>
+                <form id="create-form">
+                    <input type="hidden" id="activity-type" value="">
+                    <input type="hidden" id="editing-activity-id" value="">
+                    <div class="form-section">
+                        <div class="section-header">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            Información de la actividad
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="activity-title">Título de la actividad</label>
+                                <input type="text" id="activity-title" placeholder="Ej. Capitales de Europa" required
+                                    maxlength="100">
+                                <span class="char-counter"><span id="title-counter">0</span>/100</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="activity-description">Descripción (opcional)</label>
+                                <textarea id="activity-description"
+                                    placeholder="Ej. Pon a prueba tus conocimientos sobre las capitales de Europa..."
+                                    maxlength="200" rows="2"></textarea>
+                                <span class="char-counter"><span id="desc-counter">0</span>/200</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section" id="questions-section">
+                        <div class="section-header">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+                                <line x1="12" y1="17" x2="12.01" y2="17" />
+                            </svg>
+                            <span id="questions-section-title">Preguntas</span>
+                        </div>
+                        <div id="questions-container" class="questions-list"></div>
+                        <button type="button" id="btn-add-question" class="btn-dashed">
+                            <span class="plus-icon">+</span>
+                            <span id="btn-add-question-text">Agregar otra pregunta</span>
+                        </button>
+                    </div>
+
+                    <div class="form-section" id="puzzle-config-section" style="display:none;">
+                        <div class="section-header">
+                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            Configuración del Rompecabezas
+                        </div>
+                        <div class="form-group image-url-group">
+                            <input type="hidden" id="puzzle-image-url">
+                            <div class="upload-area" id="puzzle-upload-area">
+                                <svg width="20" height="20" fill="none" stroke="var(--accent)" stroke-width="2"
+                                    viewBox="0 0 24 24">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                    <circle cx="8.5" cy="8.5" r="1.5" />
+                                    <path d="M21 15l-5-5L5 21" />
+                                </svg>
+                                <span class="upload-label">Subir imagen</span>
+                                <input type="file" id="puzzle-image-file" accept="image/jpeg,image/png,image/webp"
+                                    hidden>
+                            </div>
+                            <div class="image-preview-container" id="puzzle-image-preview-container"
+                                style="display:none;text-align:center;margin-top:10px;">
+                                <img id="puzzle-image-preview" src="" alt="Vista previa"
+                                    style="max-height:150px;border-radius:8px;">
+                                <button type="button" id="btn-remove-puzzle-img" class="btn-remove-img">Quitar
+                                    imagen</button>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 16px;">
+                            <label>Dificultad:</label>
+                            <select id="puzzle-difficulty">
+                                <option value="3">3x3 (9 piezas)</option>
+                                <option value="4">4x4 (16 piezas)</option>
+                                <option value="5">5x5 (25 piezas)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mobile-save-container" style="display:none; margin-top:24px;">
+                        <button type="button" id="btn-save-mobile" class="btn-save"
+                            style="width:100%; justify-content:center; padding:16px; font-size:1.1rem;">
+                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" />
+                                <polyline points="7 3 7 8 15 8" />
+                            </svg>
+                            Guardar Actividad
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- LIST VIEW: My Activities -->
             <section id="list-view" class="view">
                 <header class="view-header">
                     <h1>Mis actividades</h1>
                     <p>Gestiona y edita tus creaciones.</p>
                 </header>
-                <div class="activities-grid" id="activities-container">
-                    <!-- Las actividades se renderizarán aquí con JS -->
-                </div>
+                <div class="activities-grid" id="activities-container"></div>
             </section>
 
-            <!-- Sección: Vista previa -->
+            <!-- PREVIEW VIEW: Game -->
             <section id="preview-view" class="view">
                 <header class="view-header"
-                    style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
                     <div>
                         <h1 id="game-main-title">Vista previa</h1>
                         <p id="game-main-subtitle">Prueba tu actividad antes de compartirla.</p>
                     </div>
-                    <div id="share-buttons-container" style="display: none; align-items: center; gap: 12px;">
+                    <div id="share-buttons-container" style="display:none;align-items:center;gap:12px;">
                         <button id="btn-copy-link" class="btn-secondary"
-                            style="display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 10px 16px;">
-                            🔗 Copiar Link
-                        </button>
-                        <button id="btn-whatsapp-share" class="btn-whatsapp">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.888-.788-1.489-1.761-1.663-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
+                            style="display:flex;align-items:center;gap:8px;">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+                                viewBox="0 0 24 24">
+                                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
                             </svg>
-                            WhatsApp
+                            Copiar Link
                         </button>
+                        <button id="btn-whatsapp-share" class="btn-whatsapp">WhatsApp</button>
                     </div>
                 </header>
-
-                <!-- Estado 1: Placeholder antes de jugar -->
+                <!-- Placeholder cuando no hay actividad activa -->
                 <div class="preview-container" id="preview-placeholder">
                     <div class="game-placeholder">
-                        <div class="play-icon">▶️</div>
+                        <svg width="64" height="64" fill="none" stroke="var(--text-secondary)" stroke-width="1.5"
+                            viewBox="0 0 24 24" opacity="0.4">
+                            <circle cx="12" cy="12" r="10" />
+                            <polygon points="10 8 16 12 10 16 10 8" fill="var(--text-secondary)" stroke="none" />
+                        </svg>
                         <h3 id="preview-title">Aquí se verá la actividad</h3>
                         <p id="preview-subtitle">Selecciona una actividad para jugar o crea una nueva.</p>
                     </div>
                 </div>
-
-                <!-- Estado 2: Motor de Juego -->
-                <div class="game-container" id="game-container" style="display: none;">
-                    <div class="game-header">
-                        <span class="question-counter" id="question-counter">Pregunta 1 de 5</span>
-                        <span class="score-display" id="score-display">Puntos: 0</span>
-                    </div>
-
-                    <div class="game-content" id="game-content-area">
-                        <div class="question-media" id="question-media"
-                            style="display: none; text-align: center; margin-bottom: 24px;">
-                            <img id="game-image" src="" alt="Imagen de la pregunta"
-                                style="max-width: 100%; max-height: 250px; border-radius: 12px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                <!-- Card de inicio de actividad (antes de abrir el overlay) -->
+                <div class="game-container" id="game-container" style="display:none;">
+                    <div class="start-screen" id="start-screen" style="text-align:center; padding:40px 20px;">
+                        <div style="margin-bottom: 32px;">
+                            <span
+                                style="display:inline-block; padding:6px 12px; background:var(--accent-light); color:var(--accent); border-radius:20px; font-size:0.85rem; font-weight:600; margin-bottom:16px;"
+                                id="start-type">Tipo</span>
+                            <h2 id="start-title" style="font-size:2rem; font-weight:700; color:var(--text-primary);">
+                                Título</h2>
                         </div>
-                        <h2 class="question-text" id="question-text">¿Texto de la pregunta?</h2>
-
-                        <div class="options-grid" id="options-grid">
-                            <!-- Los botones se generan con JS -->
-                        </div>
-
-                        <div class="match-grid" id="match-grid" style="display: none;">
-                            <div class="match-col" id="match-col-left"></div>
-                            <div class="match-col" id="match-col-right"></div>
-                        </div>
-
-                        <div class="game-feedback" id="game-feedback" style="display: none;">
-                            <h3 id="feedback-text">¡Correcto!</h3>
-                            <button id="btn-next-question" class="btn-primary">Siguiente</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Estado 3: Resultados Finales -->
-                <div class="results-container" id="results-container"
-                    style="display: none; justify-content: center; align-items: center; height: 500px;">
-                    <div class="results-card"
-                        style="text-align: center; padding: 40px; background: var(--bg-surface); border-radius: 16px; border: 1px solid var(--border); width: 100%; max-width: 400px;">
-                        <h2 style="margin-bottom: 24px; font-size: 2rem;">¡Completado!</h2>
-                        <div class="final-score" style="margin-bottom: 32px; color: var(--text-secondary);">
-                            <p style="font-size: 1.1rem; margin-bottom: 8px;">Tu puntaje final es:</p>
-                            <div class="score-number" style="font-size: 3rem; font-weight: 700; color: var(--accent);">
-                                <span id="final-score-text">0</span> / <span id="total-score-text">0</span>
-                            </div>
-                        </div>
-                        <button id="btn-restart-game" class="btn-primary">Volver a jugar</button>
+                        <button id="btn-start-play" class="btn-primary"
+                            style="font-size:1.2rem; padding:16px 32px; display:inline-flex; width:auto; border-radius:30px; margin:0 auto;">
+                            <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24"
+                                style="margin-right:8px;">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                            Jugar
+                        </button>
                     </div>
                 </div>
             </section>
         </main>
-    </div>
-    <!-- Modal Búsqueda de Imágenes -->
-    <div id="image-search-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 style="font-size: 1.2rem; color: var(--text-primary);">Buscar imagen</h2>
-                <button id="btn-close-modal"
-                    style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.2rem;">✖</button>
+
+        <!-- LIVE PREVIEW PANEL -->
+        <aside id="live-preview-panel" class="preview-panel">
+            <div class="preview-panel-header">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                </svg>
+                Vista previa
             </div>
-            <div class="modal-body">
-                <div class="search-container">
-                    <input type="text" id="image-search-input" class="search-input"
-                        placeholder="Buscar imagen... (ej: perro)">
-                    <button id="btn-search-execute" class="btn-primary btn-search-execute">Buscar</button>
+            <div class="preview-panel-body">
+                <h3 id="live-preview-title" style="margin-bottom: 12px; font-size: 1.1rem; color: var(--text-primary);">
+                    Título de la actividad</h3>
+                <div class="preview-cover-wrap" id="live-preview-cover" style="display:none;">
+                    <img id="live-preview-cover-img" src="" alt="Portada" class="preview-cover-img">
                 </div>
-                <div id="image-search-loader"
-                    style="display: none; text-align: center; margin: 20px 0; color: var(--text-secondary);">Buscando...
+                <div class="preview-mock-card" id="live-preview-mock-card">
+                    <div class="preview-mock-counter" id="live-preview-counter">Pregunta 1 de 1</div>
+                    <div class="preview-mock-question" id="live-preview-question">¿Escribe tu pregunta aquí?</div>
+                    <div class="preview-mock-options" id="live-preview-options"></div>
                 </div>
-                <div id="image-search-results" class="image-results-grid"></div>
+                <div class="preview-footer-note" id="live-preview-footer-note">
+                    <svg width="16" height="16" fill="var(--accent)" viewBox="0 0 24 24">
+                        <path
+                            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    <div>
+                        <strong>Así verán esta pregunta tus estudiantes.</strong>
+                    </div>
+                </div>
+                <div class="preview-mock-puzzle" id="live-preview-mock-puzzle" style="display:none;">
+                    <div id="live-preview-puzzle-grid"
+                        style="display:grid; gap:2px; aspect-ratio:1/1; max-width:100%; border:2px solid var(--border); border-radius:var(--radius-md); overflow:hidden; background:var(--bg-main);">
+                    </div>
+                    <div style="text-align:center; font-size:0.8rem; color:var(--text-secondary); margin-top:10px;">
+                        Vista previa del tablero</div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- BOTTOM NAV (Mobile) -->
+    <nav class="bottom-nav">
+        <ul class="nav-links bottom-links">
+            <li><a href="#" data-target="create-view" class="active">
+                    <span class="icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg></span>
+                    <span>Crear</span>
+                </a></li>
+            <li><a href="#" data-target="list-view">
+                    <span class="icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="7" height="7" rx="1" />
+                            <rect x="14" y="3" width="7" height="7" rx="1" />
+                            <rect x="3" y="14" width="7" height="7" rx="1" />
+                            <rect x="14" y="14" width="7" height="7" rx="1" />
+                        </svg></span>
+                    <span>Actividades</span>
+                </a></li>
+            <li><a href="#" data-target="preview-view">
+                    <span class="icon"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" />
+                            <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none" />
+                        </svg></span>
+                    <span>Preview</span>
+                </a></li>
+        </ul>
+    </nav>
+
+    <!-- Modal Generador con IA -->
+    <div id="ai-generator-modal" class="modal-ai" style="display:none;">
+        <div class="modal-ai-backdrop" id="ai-modal-backdrop"></div>
+        <div class="modal-ai-content card">
+            <div class="modal-ai-header">
+                <div class="modal-ai-title">
+                    <span class="ai-sparkle-icon">✨</span>
+                    <div>
+                        <h3>Generador con Inteligencia Artificial</h3>
+                        <p>Crea preguntas y contenidos automáticamente con IA</p>
+                    </div>
+                </div>
+                <button id="btn-close-ai-modal" class="btn-close-peek" type="button" title="Cerrar">&times;</button>
+            </div>
+            <div class="modal-ai-body">
+                <input type="hidden" id="ai-activity-type" value="Opción múltiple">
+                <div style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg, rgba(124,58,237,0.10), rgba(124,58,237,0.03)); border:1.5px solid var(--accent); border-radius:12px; padding:8px 16px; margin-bottom:14px;">
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="var(--accent)" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M9 12l2 2 4-4"/></svg>
+                    <span id="ai-type-label" style="font-weight:800; font-size:0.9rem; color:var(--accent);">Opción múltiple</span>
+                </div>
+                <div class="form-group" style="margin-bottom:14px;">
+                    <label for="ai-topic-input" style="font-weight:700; display:block; margin-bottom:6px;">Tema o materia</label>
+                    <textarea id="ai-topic-input" placeholder="Ej: El sistema solar" rows="2" style="width:100%; border-radius:12px; padding:10px 14px; font-size:0.95rem; resize:none; border:1.5px solid var(--border); background:var(--bg-main); color:var(--text-primary);"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:16px;">
+                    <label for="ai-count-select" style="font-weight:700; display:block; margin-bottom:6px;">Cantidad de preguntas</label>
+                    <select id="ai-count-select" style="width:100%; padding:10px 14px; border-radius:12px; border:1.5px solid var(--border); background:var(--bg-main); color:var(--text-primary); font-weight:700;">
+                        <option value="1">1 elemento</option>
+                        <option value="2">2 elementos</option>
+                        <option value="3">3 elementos</option>
+                        <option value="4">4 elementos</option>
+                        <option value="5" selected>5 elementos</option>
+                        <option value="6">6 elementos</option>
+                        <option value="7">7 elementos</option>
+                        <option value="8">8 elementos</option>
+                        <option value="9">9 elementos</option>
+                        <option value="10">10 elementos</option>
+                    </select>
+                </div>
+
+                <div id="ai-loading-state" style="display:none; text-align:center; padding:18px 0; margin-bottom:10px;">
+                    <lottie-player src="https://assets3.lottiefiles.com/packages/lf20_myejiggj.json" background="transparent" speed="1" style="width:100px; height:100px; margin:0 auto;" loop autoplay></lottie-player>
+                    <span id="ai-loading-text" style="display:block; font-weight:800; color:var(--accent); font-size:0.95rem; margin-top:6px;">Generando preguntas, Paciencia Pliss</span>
+                </div>
+            </div>
+            <div class="modal-ai-footer" style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" id="btn-cancel-ai" class="btn-secondary" style="border-radius:12px; padding:10px 18px;">Cancelar</button>
+                <button type="button" id="btn-generate-ai-action" class="btn-primary btn-ai-generate" style="border-radius:12px; padding:10px 22px; display:inline-flex; align-items:center; gap:8px;">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.4 7.6L20 10L14.4 12.4L12 18L9.6 12.4L4 10L9.6 7.6L12 2Z"/></svg>
+                    Generar actividad
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Notificación Toast -->
-    <div id="toast-notification" class="toast">Link copiado al portapapeles</div>
+    <div id="toast-notification" class="toast">Enlace copiado al portapapeles</div>
+    <canvas id="confetti-canvas" class="confetti-canvas"></canvas>
+
+    <!-- Animation & Effects Libraries (Anime.js, Lottie, Confetti) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.2/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+    <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 
     <!-- Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
-    <script src="script.js"></script>
+    <!-- Theme Toggle Script -->
+    <script>
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const body = document.body;
+        const currentTheme = localStorage.getItem('eduplay_theme');
+        if (currentTheme === 'dark') {
+            body.classList.add('dark-theme');
+        }
+        themeToggleBtn.addEventListener('click', () => {
+            body.classList.toggle('dark-theme');
+            localStorage.setItem('eduplay_theme', body.classList.contains('dark-theme') ? 'dark' : 'light');
+        });
+    </script>
+    <script src="script.js?v=115"></script>
 </body>
 
 </html>
